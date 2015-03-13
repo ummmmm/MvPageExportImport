@@ -1,0 +1,7 @@
+[
+	{
+		"button": "button1", "count": 1,
+		"modifiers": [ "ctrl", "alt" ],
+		"command": "mv_page_export_import_open_item"
+	}
+]
