@@ -28,7 +28,7 @@
 		"password": "miva_password",
 
 		// the location of the export templates on the server
-		"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates/"
+		"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates"
 	},
 
 	// the location of the exported templates on your machine

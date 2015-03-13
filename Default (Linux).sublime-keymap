@@ -1,0 +1,3 @@
+[
+	{ "keys": [ "ctrl+m", "ctrl+p" ], "command": "mv_page_export_import_get_page" }
+]
