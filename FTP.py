@@ -21,12 +21,14 @@ class FTP():
 		download_path 	= os.path.join( self.local_exported_templates, template_name )
 
 		try:
-			print( command )
+			print( "Downloading file with FTP command '{0}'" . format( command ) )
 
 			self.ftp.retrbinary( command, open( download_path, 'wb+' ).write )
 		except Exception as e:
 			print( "FTP: Failed to download file '{0}': {1}" . format( template_name, str( e ) ) )
 			return self.log_error( 'Failed to download file' )
+
+		print( 'File downloaded' )
 
 		return True
 
@@ -41,12 +43,14 @@ class FTP():
 		download_path 	= os.path.join( self.local_exported_templates, template_name )
 
 		try:
-			print( command )
+			print( "Uploading file with FTP command '{0}'" . format( command ) )
 
 			self.ftp.storbinary( command, open( download_path, 'rb' ) )
 		except Exception as e:
 			print( "FTP: Failed to upload file '{0}': {1}" . format( template_name, str( e ) ) )
 			return self.log_error( 'Failed to upload file' )
+
+		print( 'File uploaded' )
 
 		return True
 
@@ -72,7 +76,7 @@ class FTP():
 			self.ftp.cwd( path )
 		except Exception as e:
 			print( "FTP: Failed to change to directory '{0}': {1}" . format( path, str( e ) ) )
-			return self.log_error( "Failed to changed to directory '{1}'" . format( path ) )
+			return self.log_error( "Failed to changed to directory '{0}'" . format( path ) )
 
 		self.current_directory = path
 

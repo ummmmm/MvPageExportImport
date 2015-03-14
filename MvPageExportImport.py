@@ -1,6 +1,6 @@
 import sublime, sublime_plugin
-import os.path
 import json
+import os.path
 import urllib.request
 from .FTP import FTP
 
@@ -35,6 +35,8 @@ class MvPageExportImportGetPageCommand( sublime_plugin.WindowCommand ):
 		self.pages_quick_panel()
 
 	def pages_quick_panel( self ):
+		print( 'Retrieving store pages through JSON...' )
+
 		entries					= []
 		result, response, error = make_json_request( self.store_settings, 'PageList_Load_Query', '&Count=50000&Sort=code' )
 
@@ -42,6 +44,8 @@ class MvPageExportImportGetPageCommand( sublime_plugin.WindowCommand ):
 			return sublime.error_message( error )
 
 		pages = response[ 'data' ][ 'data' ]
+
+		print( 'Retrieved {0} pages' . format( len( pages ) ) )
 
 		for page in pages:
 			entries.extend( [ '{0} - {1}' . format( page[ 'code' ], page[ 'name' ] ) ] )
@@ -53,10 +57,15 @@ class MvPageExportImportGetPageCommand( sublime_plugin.WindowCommand ):
 			return
 
 		page_code				= pages[ index ][ 'code' ]
+
+		print( "Triggering page export for page code '{0}' through JSON" . format( page_code ) )
+
 		result, response, error	= make_json_request( self.store_settings, 'Page_Export_Code', '&Page_Code={0}' . format( page_code ) )
 
 		if not result:
 			return sublime.error_message( error )
+
+		print( 'Page exported' )
 
 		export_name = '{0}-page.htm' . format( page_code )
 
@@ -88,16 +97,19 @@ class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 		page_code 	= os.path.splitext( file_name )[ 0 ].replace( '-page', '' )
 
 		if not ftp.upload_file( file_name ):
-			return
+			return sublime.error_message( ftp.error )
 
 		if not file_name.endswith( '-page.htm' ):
 			return
+
+		print( "Triggering page import for page code '{0}' through JSON" . format( page_code ) )
 
 		result, response, error = make_json_request( store_settings, 'Page_Import_Code', '&Page_Code={0}' . format( page_code ) )
 
 		if not result:
 			sublime.error_message( error )
 
+		print( 'Page imported' )
 
 def make_json_request( store_settings, function, other_data = '' ):		
 		store_code	= store_settings[ 'store_code' ]
