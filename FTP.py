@@ -1,84 +1,48 @@
-import os.path
 import ftplib
 
 class FTP():
-	def __init__( self, settings ):
-		self.ftp_settings				= settings.get( 'ftp', None )
-		self.local_exported_templates	= settings.get( 'local_exported_templates', '' )
-		self.ftp 						= ftplib.FTP( self.ftp_settings[ 'host' ] )
-		self.error						= ''
-		self.logged_in					= False
-		self.current_directory			= None
+	def __init__( self, host, username, password, timeout = 15 ):
+		self.host		= host
+		self.username	= username
+		self.password	= password
+		self.timeout	= timeout
+		self.ftp		= None
+		self.error		= ''
 
-	def download_file( self, template_name ):
+	def __del__( self ):
+		if self.ftp:
+			self.ftp.quit()
+
+	def download_file( self, server_file_path, local_file_path ):
 		if not self.login():
 			return False
 
-		if not self.cwd( self.ftp_settings[ 'exported_templates' ] ):
-			return False
-
-		command 		= 'RETR {0}' . format( template_name )
-		download_path 	= os.path.join( self.local_exported_templates, template_name )
-
 		try:
-			print( "Downloading file with FTP command '{0}'" . format( command ) )
-
-			self.ftp.retrbinary( command, open( download_path, 'wb+' ).write )
+			self.ftp.retrbinary( 'RETR {0}' . format( server_file_path ), open( local_file_path, 'wb+' ).write )
 		except Exception as e:
-			print( "FTP: Failed to download file '{0}': {1}" . format( template_name, str( e ) ) )
+			print( 'Failed downloading file: {0}' . format( str( e ) ) )
 			return self.log_error( 'Failed to download file' )
-
-		print( 'File downloaded' )
 
 		return True
 
-	def upload_file( self, template_name ):
+	def upload_file( self, local_file_path, server_file_path ):
 		if not self.login():
 			return False
 
-		if not self.cwd( self.ftp_settings[ 'exported_templates' ] ):
-			return False
-
-		command 		= 'STOR {0}' . format( template_name )
-		download_path 	= os.path.join( self.local_exported_templates, template_name )
-
 		try:
-			print( "Uploading file with FTP command '{0}'" . format( command ) )
-
-			self.ftp.storbinary( command, open( download_path, 'rb' ) )
+			self.ftp.storbinary( 'STOR {0}' . format( server_file_path ), open( local_file_path, 'rb' ) )
 		except Exception as e:
-			print( "FTP: Failed to upload file '{0}': {1}" . format( template_name, str( e ) ) )
+			print( 'Failed uploading file: {0}' . format( str( e ) ) )
 			return self.log_error( 'Failed to upload file' )
-
-		print( 'File uploaded' )
 
 		return True
 
 	def login( self ):
-		if self.logged_in:
-			return True
-
 		try:
-			self.ftp.login( self.ftp_settings[ 'username' ], self.ftp_settings[ 'password' ] )
+			self.ftp = ftplib.FTP( self.host, self.username, self.password, self.timeout )
 		except Exception as e:
-			print( "FTP: Failed to login to server '{0}': {1}" . format( self.ftp_settings[ 'host' ], str( e ) ) )
-			return self.log_error( 'Failed to login to server' )
-
-		self.logged_in = True
-
-		return True
-
-	def cwd( self, path ):
-		if self.current_directory == path:
-			return
-
-		try:
-			self.ftp.cwd( path )
-		except Exception as e:
-			print( "FTP: Failed to change to directory '{0}': {1}" . format( path, str( e ) ) )
-			return self.log_error( "Failed to changed to directory '{0}'" . format( path ) )
-
-		self.current_directory = path
+			print( 'Failed connecting / logging in: {0}' . format( str( e ) ) )
+			return self.log_error( 'Failed to login' )
 
 		return True
 
