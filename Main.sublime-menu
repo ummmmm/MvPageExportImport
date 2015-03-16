@@ -25,7 +25,9 @@
 								"args": {"file": "${packages}/User/MvPageExportImport.sublime-settings"},
 								"caption": "Settings – User"
 							},
-
+							{
+								"caption": "-"
+							},
 							// key mappings
 							{
 								"command": "open_file",
@@ -81,8 +83,9 @@
 								},
 								"caption": "Key Bindings - User"
 							},
-
-
+							{
+								"caption": "-"
+							},
 							// mouse mappings
 							{
 								"command": "open_file",
