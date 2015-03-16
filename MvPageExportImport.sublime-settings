@@ -12,7 +12,10 @@
 		"username": "Miva_Admin",
 
 		// the store login password
-		"password": "Miva_P@ssw0rd"
+		"password": "Miva_P@ssw0rd",
+
+		// the number of seconds to spend on blocking operations
+		"timeout": 15
 	},
 
 	// ftp specific settings
@@ -28,7 +31,10 @@
 		"password": "miva_password",
 
 		// the location of the export templates on the server
-		"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates"
+		"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates",
+
+		// the number of seconds to spend on blocking operations
+		"timeout": 15
 	},
 
 	// the location of the exported templates on your machine
