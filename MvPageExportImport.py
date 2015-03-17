@@ -6,13 +6,17 @@ import re
 import threading
 from .FTP import FTP
 
-class MvPageExportImportGetPageCommand( sublime_plugin.WindowCommand ):
+#
+# Pages / Items Quick Panel Load
+#
+
+class MvPageExportImportGetPagesCommand( sublime_plugin.WindowCommand ):
 	def run( self ):
 		self.settings = sublime.load_settings( 'MvPageExportImport.sublime-settings' )
 
 		thread = PageListLoadThread( self.settings, on_complete = self.pages_quick_panel )
 		thread.start()
-		ThreadProgress( thread, 'Loading pages' )
+		ThreadProgress( thread, 'Loading pages', error_message = 'Failed loading pages' )
 
 	def pages_quick_panel( self, pages ):
 		entries = []
@@ -29,19 +33,67 @@ class MvPageExportImportGetPageCommand( sublime_plugin.WindowCommand ):
 		page_code 	= pages[ index ][ 'code' ]
 		thread 		= PageExportThread( page_code, self.settings, on_complete = self.download_page )
 		thread.start()
-		ThreadProgress( thread, 'Exporting {0}' . format( page_code ), '{0} exported' . format( page_code ) )
+		ThreadProgress( thread, 'Exporting {0}' . format( page_code ), '{0} exported' . format( page_code ), 'Export of {0} failed' . format( page_code ) )
 
 	def download_page( self, page_code ):
 		file_name 	= '{0}-page.htm' . format ( page_code )
 		thread 		= FileDownloadThread( file_name, self.settings, on_complete = self.download_page_callback )
 		thread.start()
-		ThreadProgress( thread, 'Downloading {0}' . format( page_code ), '{0} downloaded' . format( page_code ) )
+		ThreadProgress( thread, 'Downloading {0}' . format( page_code ), '{0} downloaded' . format( page_code ), 'Download of {0} failed' . format( page_code ) )
 
 	def download_page_callback( self, local_file_path ):
 		self.window.open_file( local_file_path )
 
 	def show_quick_panel( self, entries, on_select, on_highlight = None ):
 		sublime.set_timeout( lambda: self.window.show_quick_panel( entries, on_select, on_highlight = on_highlight ), 10 )
+
+class MvPageExportImportGetItemsCommand( sublime_plugin.WindowCommand ):
+	def run( self ):
+		view 		= self.window.active_view()
+		file_path 	= view.file_name()
+
+		if file_path is None or not file_path.endswith( '.htm' ):
+			return
+
+		self.settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
+		dir_name 		= os.path.dirname( file_path )
+
+		if dir_name != self.settings.get( 'local_exported_templates' ):
+			return
+
+		item_paths	= []
+		item_regex	= '<mvt:item name="[^"].+?"\s*(?:param="[^"].*?"\s*)?file="([^"].+?\.htm)"\s*\/>'
+		view.find_all( item_regex, fmt = '$1', extractions = item_paths )
+
+		if not item_paths:
+			return
+
+		self.show_quick_panel( item_paths, lambda index: self.itemlist_load( item_paths, index ) )
+
+	def itemlist_load( self, item_paths, index ):
+		if index == -1:
+			return
+
+		file_name 	= item_paths[ index ]
+		thread 		= FileDownloadThread( file_name, self.settings, on_complete = self.download_item_callback )
+		thread.start()
+		ThreadProgress( thread, 'Downloading {0}' . format( file_name ), '{0} downloaded' . format( file_name ), 'Download of {0} failed' . format( 'file_name' ) )
+
+	def download_item_callback( self, local_file_path ):
+		self.window.open_file( local_file_path )
+
+	def show_quick_panel( self, entries, on_select, on_highlight = None ):
+		unique = []
+
+		for entry in entries:
+			if entry not in unique:
+				unique.append( entry )
+
+		sublime.set_timeout( lambda: self.window.show_quick_panel( unique, on_select, on_highlight = on_highlight ), 10 )
+
+# 
+# File Upload
+# 
 
 class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 	def on_post_save( self, view ):
@@ -59,7 +111,7 @@ class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 		file_name	= os.path.basename( file_path )
 		thread 		= FileUploadThread( file_name, self.settings, on_complete = self.upload_file_callback )
 		thread.start()
-		ThreadProgress( thread, 'Uploading {0}' . format( file_name ), '{0} uploaded' . format( file_name ) )
+		ThreadProgress( thread, 'Uploading {0}' . format( file_name ), '{0} uploaded' . format( file_name ), 'Upload of {0} failed' . format( file_name ) )
 
 	def upload_file_callback( self, file_name ):
 		if not file_name.endswith( '-page.htm' ):
@@ -68,7 +120,11 @@ class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 		page_code 	= file_name.replace( '-page.htm', '' )
 		thread 		= PageImportThread( page_code, self.settings, on_complete = None )
 		thread.start()
-		ThreadProgress( thread, 'Importing {0}' . format( page_code ), '{0} imported' . format( page_code ) )
+		ThreadProgress( thread, 'Importing {0}' . format( page_code ), '{0} imported' . format( page_code ), 'Import of {0} failed' . format( page_code ) )
+
+# 
+# File Open (used for underlining items)
+# 
 
 class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 	def __init__( self ):
@@ -126,6 +182,10 @@ class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 			self.regions.append( item.a )
 			view.add_regions( 'mvpageexportimport_{0}' . format( item.a ), [ sublime.Region( start, end ) ], 'dot', flags = sublime.DRAW_SOLID_UNDERLINE | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE )
 
+# 
+# Used by the mouse bindings
+# 
+
 class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 	def run( self, edit ):
 		file_path 		= self.view.file_name()
@@ -134,7 +194,6 @@ class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 			return
 
 		item_file_attr	= self.view.substr( self.view.expand_by_class( self.view.sel()[ 0 ], sublime.CLASS_WORD_START | sublime.CLASS_WORD_END, '"' ) )
-
 
 		if not item_file_attr.endswith( '.htm' ):
 			return
@@ -148,7 +207,7 @@ class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 		file_name 	= item_file_attr
 		thread 		= FileDownloadThread( file_name, settings, on_complete = self.download_item_callback )
 		thread.start()
-		ThreadProgress( thread, 'Downloading {0}' . format( file_name ), '{0} downloaded' . format( file_name ) )
+		ThreadProgress( thread, 'Downloading {0}' . format( file_name ), '{0} downloaded' . format( file_name ), 'Download of {0} failed' . format( file_name ) )
 
 	def download_item_callback( self, local_file_path ):
 		self.view.window().open_file( local_file_path )
@@ -158,10 +217,11 @@ class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 #
 
 class ThreadProgress():
-	def __init__( self, thread, message, success_message = '' ):
+	def __init__( self, thread, message, success_message = '', error_message = '' ):
 		self.thread 			= thread
 		self.message 			= message
 		self.success_message 	= success_message
+		self.error_message		= error_message
 		self.addend 			= 1
 		self.size 				= 8
 
@@ -171,6 +231,9 @@ class ThreadProgress():
 		if not self.thread.is_alive():
 			if hasattr( self.thread, 'result' ) and not self.thread.result:
 				return sublime.status_message('')
+
+			if hasattr( self.thread, 'error' ) and self.thread.error:
+				return sublime.status_message( self.error_message )
 
 			return sublime.status_message( self.success_message )
 
@@ -193,6 +256,7 @@ class PageListLoadThread( threading.Thread ):
 	def __init__( self, settings, on_complete ):
 		self.settings 		= settings
 		self.on_complete	= on_complete
+		self.error			= False
 		threading.Thread.__init__( self )
 
 	def run( self ):
@@ -203,6 +267,7 @@ class PageListLoadThread( threading.Thread ):
 		result, response, error = make_json_request( store_settings, 'PageList_Load_Query', '&Count=50000&Sort=code' )
 
 		if not result:
+			self.error = True
 			return sublime.error_message( error )
 
 		pages = response[ 'data' ][ 'data' ]
@@ -216,6 +281,7 @@ class PageExportThread( threading.Thread ):
 		self.page_code		= page_code
 		self.settings 		= settings
 		self.on_complete	= on_complete
+		self.error			= False
 		threading.Thread.__init__( self )
 
 	def run( self ):
@@ -226,6 +292,7 @@ class PageExportThread( threading.Thread ):
 		result, response, error	= make_json_request( store_settings, 'Page_Export_Code', '&Page_Code={0}' . format( self.page_code ) )
 
 		if not result:
+			self.error = True
 			return sublime.error_message( error )
 
 		print( 'Page exported' )
@@ -237,6 +304,7 @@ class FileDownloadThread( threading.Thread ):
 		self.file_name		= file_name
 		self.settings		= settings
 		self.on_complete	= on_complete
+		self.error			= False
 		threading.Thread.__init__( self )
 
 	def run( self ):
@@ -258,6 +326,7 @@ class FileDownloadThread( threading.Thread ):
 		print( 'Downloading file {0}' . format( server_file_path ) )
 
 		if not ftp.download_file( server_file_path, local_file_path ):
+			self.error = True
 			return sublime.error_message( ftp.error )
 
 		print( 'Downloaded complete' )
@@ -269,6 +338,7 @@ class FileUploadThread( threading.Thread ):
 		self.file_name 		= file_name
 		self.settings		= settings
 		self.on_complete	= on_complete
+		self.error			= False
 		threading.Thread.__init__( self )
 
 	def run( self ):
@@ -290,6 +360,7 @@ class FileUploadThread( threading.Thread ):
 		print( 'Uploading file {0}' . format( local_file_path ) )
 
 		if not ftp.upload_file( local_file_path, server_file_path ):
+			self.error = True
 			return sublime.error_message( ftp.error )
 
 		print( 'Upload complete' )
@@ -301,6 +372,7 @@ class PageImportThread( threading.Thread ):
 		self.page_code		= page_code
 		self.settings		= settings
 		self.on_complete	= on_complete
+		self.error			= False
 		threading.Thread.__init__( self )
 
 	def run( self ):
@@ -311,6 +383,7 @@ class PageImportThread( threading.Thread ):
 		result, response, error	= make_json_request( store_settings, 'Page_Import_Code', '&Page_Code={0}' . format( self.page_code ) )
 
 		if not result:
+			self.error = True
 			return sublime.error_message( error )
 
 		print( 'Page imported' )
