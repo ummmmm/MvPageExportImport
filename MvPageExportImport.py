@@ -36,8 +36,7 @@ class MvPageExportImportGetPagesCommand( sublime_plugin.WindowCommand ):
 
 		if site is None:
 			if settings.get( 'sites' ) is not None:
-				sublime.error_message( 'Which site do you want?' )
-				return
+				return self.window.run_command( 'mv_page_export_import_get_sites' )
 
 			self.settings = settings
 		else:
@@ -130,9 +129,9 @@ class MvPageExportImportGetItemsCommand( sublime_plugin.WindowCommand ):
 
 		sublime.set_timeout( lambda: self.window.show_quick_panel( unique, on_select, on_highlight = on_highlight ), 10 )
 
-# 
+#
 # File Upload
-# 
+#
 
 class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 	def on_post_save( self, view ):
@@ -161,9 +160,9 @@ class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 		thread.start()
 		ThreadProgress( thread, 'Importing {0}' . format( page_code ), '{0} imported' . format( page_code ), 'Import of {0} failed' . format( page_code ) )
 
-# 
+#
 # File Open (used for underlining items)
-# 
+#
 
 class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 	def __init__( self ):
@@ -221,9 +220,9 @@ class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 			self.regions.append( item.a )
 			view.add_regions( 'mvpageexportimport_{0}' . format( item.a ), [ sublime.Region( start, end ) ], 'dot', flags = sublime.DRAW_SOLID_UNDERLINE | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE )
 
-# 
+#
 # Used by the mouse bindings
-# 
+#
 
 class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 	def run( self, edit ):
