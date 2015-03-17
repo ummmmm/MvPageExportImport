@@ -94,10 +94,10 @@ class MvPageExportImportGetItemsCommand( sublime_plugin.WindowCommand ):
 		if file_path is None or not file_path.endswith( '.htm' ):
 			return
 
-		self.settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
 		dir_name 		= os.path.dirname( file_path )
+		self.settings	= determine_settings( dir_name )
 
-		if dir_name != self.settings.get( 'local_exported_templates' ):
+		if self.settings is None:
 			return
 
 		item_paths	= []
@@ -141,14 +141,14 @@ class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 		if file_path is None or not file_path.endswith( '.htm' ):
 			return
 
-		self.settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
 		dir_name 		= os.path.dirname( file_path )
+		self.settings	= determine_settings( dir_name )
 
-		if dir_name != self.settings.get( 'local_exported_templates' ):
+		if self.settings is None:
 			return
 
-		file_name	= os.path.basename( file_path )
-		thread 		= FileUploadThread( file_name, self.settings, on_complete = self.upload_file_callback )
+		file_name		= os.path.basename( file_path )
+		thread 			= FileUploadThread( file_name, self.settings, on_complete = self.upload_file_callback )
 		thread.start()
 		ThreadProgress( thread, 'Uploading {0}' . format( file_name ), '{0} uploaded' . format( file_name ), 'Upload of {0} failed' . format( file_name ) )
 
@@ -176,13 +176,13 @@ class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 		if file_path is None or not file_path.endswith( '.htm' ):
 			return
 
-		settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
-		dir_name 	= os.path.dirname( file_path )
+		dir_name = os.path.dirname( file_path )
+		settings = determine_settings( dir_name )
 
-		if dir_name != settings.get( 'local_exported_templates' ):
+		if settings is None:
 			return
 
-		items 		= view.find_all( self.item_regex )
+		items = view.find_all( self.item_regex )
 		self.do_underline( view, items )
 
 	def on_modified( self, view ):
@@ -191,10 +191,10 @@ class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 		if file_path is None:
 			return
 
-		settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
-		dir_name 	= os.path.dirname( file_path )
+		dir_name = os.path.dirname( file_path )
+		settings = determine_settings( dir_name )
 
-		if dir_name != settings.get( 'local_exported_templates' ):
+		if settings is None:
 			return
 
 		items 		= view.find_all( self.item_regex )
@@ -237,10 +237,10 @@ class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 		if not item_file_attr.endswith( '.htm' ):
 			return
 
-		settings 					= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
-		local_exported_templates	= settings.get( 'local_exported_templates' )
+		dir_name = os.path.dirname( file_path )
+		settings = determine_settings( dir_name )
 
-		if os.path.dirname( file_path ) != local_exported_templates:
+		if settings is None:
 			return
 
 		file_name 	= item_file_attr
@@ -430,6 +430,22 @@ class PageImportThread( threading.Thread ):
 #
 # Helper Functions
 #
+
+def determine_settings( dir_name ):
+	settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
+	sites		= settings.get( 'sites' )
+
+	if sites is None:
+		return settings
+
+	try:
+		for site in sites:
+			if site[ 'local_exported_templates' ] == dir_name:
+				return site
+	except:
+		pass
+
+	return None
 
 def make_json_request( store_settings, function, other_data = '' ):
 		store_settings.setdefault( 'store_code', '' )
