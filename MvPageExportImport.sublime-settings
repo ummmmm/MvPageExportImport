@@ -1,3 +1,5 @@
+// example for a single site configuration
+
 {
 	// store specific settings
 	"store":
@@ -40,3 +42,53 @@
 	// the location of the exported templates on your machine
 	"local_exported_templates": "/tmp"
 }
+
+// example for a multi-site configuration
+// {
+// 	"sites":
+// 	[
+// 		{
+// 			"name": "Domain.com",
+// 			// store specific settings
+// 			"store":
+// 			{
+// 				// the store code to grab the pages from
+// 				"store_code": "my_store",
+
+// 				// the json URL to the store
+// 				"json_url": "http://domain.com/mm5/json.mvc",
+
+// 				// the store login username
+// 				"username": "Miva_Admin",
+
+// 				// the store login password
+// 				"password": "Miva_P@ssw0rd",
+
+// 				// the number of seconds to spend on blocking operations
+// 				"timeout": 15
+// 			},
+
+// 			// ftp specific settings
+// 			"ftp":
+// 			{
+// 				// the ftp host
+// 				"host": "domain.com",
+
+// 				// the ftp username
+// 				"username": "miva_ftp",
+
+// 				// the ftp password
+// 				"password": "miva_password",
+
+// 				// the location of the export templates on the server
+// 				"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates",
+
+// 				// the number of seconds to spend on blocking operations
+// 				"timeout": 15
+// 			},
+
+// 			// the location of the exported templates on your machine
+// 			"local_exported_templates": "/tmp"
+// 		}
+// 	]
+// }

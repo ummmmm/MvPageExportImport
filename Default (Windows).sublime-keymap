@@ -1,4 +1,5 @@
 [
 	{ "keys": [ "ctrl+m", "ctrl+p" ], "command": "mv_page_export_import_get_pages" },
-	{ "keys": [ "ctrl+m", "ctrl+i" ], "command": "mv_page_export_import_get_items" }
+	{ "keys": [ "ctrl+m", "ctrl+i" ], "command": "mv_page_export_import_get_items" },
+	{ "keys": [ "ctrl+m", "ctrl+s" ], "command": "mv_page_export_import_get_sites" }
 ]

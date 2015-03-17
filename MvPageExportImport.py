@@ -10,9 +10,48 @@ from .FTP import FTP
 # Pages / Items Quick Panel Load
 #
 
-class MvPageExportImportGetPagesCommand( sublime_plugin.WindowCommand ):
+class MvPageExportImportGetSitesCommand( sublime_plugin.WindowCommand ):
 	def run( self ):
-		self.settings = sublime.load_settings( 'MvPageExportImport.sublime-settings' )
+		self.settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
+		sites			= []
+
+		for site in self.settings.get( 'sites', [] ):
+			sites.append( site[ 'name' ] )
+
+		if not sites:
+			sublime.error_message( 'No sites configured' )
+			return
+
+		sublime.set_timeout( lambda: self.window.show_quick_panel( sites, lambda index: self.site_callback( sites, index ) ) )
+
+	def site_callback( self, sites, index ):
+		if index == -1:
+			return
+
+		self.window.run_command( 'mv_page_export_import_get_pages', { 'site': sites[ index ] } )
+
+class MvPageExportImportGetPagesCommand( sublime_plugin.WindowCommand ):
+	def run( self, site = None ):
+		settings = sublime.load_settings( 'MvPageExportImport.sublime-settings' )
+
+		if site is None:
+			if settings.get( 'sites' ) is not None:
+				sublime.error_message( 'Which site do you want?' )
+				return
+
+			self.settings = settings
+		else:
+			try:
+				for site_settings in settings.get( 'sites', [] ):
+					if site_settings[ 'name' ] == site:
+						self.settings = site_settings
+						break
+			except KeyError:
+				sublime.error_message( 'Site not found' )
+				return
+			except Exception:
+				sublime.error_message( 'Invalid configuration file' )
+				return
 
 		thread = PageListLoadThread( self.settings, on_complete = self.pages_quick_panel )
 		thread.start()
