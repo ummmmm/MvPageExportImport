@@ -35,6 +35,9 @@
 		// the location of the export templates on the server
 		"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates",
 
+		// server type - this allows correct building of file paths
+		"server_type": "unix",
+
 		// the number of seconds to spend on blocking operations
 		"timeout": 15
 	},
@@ -82,6 +85,9 @@
 
 // 				// the location of the export templates on the server
 // 				"exported_templates": "/var/www/vhosts/domain/httpdocs/editable_templates",
+
+//				// server type - this allows correct building of file paths
+//				"server_type": "unix",
 
 // 				// the number of seconds to spend on blocking operations
 // 				"timeout": 15

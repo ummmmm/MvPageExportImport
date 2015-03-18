@@ -352,12 +352,13 @@ class FileDownloadThread( threading.Thread ):
 		ftp_settings.setdefault( 'username', '' )
 		ftp_settings.setdefault( 'password', '' )
 		ftp_settings.setdefault( 'exported_templates', '' )
+		ftp_settings.setdefault( 'server_type', 'unix' )
 		ftp_settings.setdefault( 'timeout', 15 )
 
 		server_directory	= ftp_settings[ 'exported_templates' ]
 		local_directory		= self.settings.get( 'local_exported_templates', '' )
 
-		server_file_path 	= os.path.join( server_directory, self.file_name )
+		server_file_path 	= join_path( server_directory, self.file_name, ftp_settings[ 'server_type' ] )
 		local_file_path		= os.path.join( local_directory, self.file_name )
 		ftp 				= FTP( ftp_settings[ 'host' ], ftp_settings[ 'username' ], ftp_settings[ 'password' ], ftp_settings[ 'timeout' ] )
 
@@ -386,12 +387,13 @@ class FileUploadThread( threading.Thread ):
 		ftp_settings.setdefault( 'username', '' )
 		ftp_settings.setdefault( 'password', '' )
 		ftp_settings.setdefault( 'exported_templates', '' )
+		ftp_settings.setdefault( 'server_type', 'unix' )
 		ftp_settings.setdefault( 'timeout', 15 )
 
 		server_directory	= ftp_settings[ 'exported_templates' ]
 		local_directory		= self.settings.get( 'local_exported_templates', '' )
 
-		server_file_path 	= os.path.join( server_directory, self.file_name )
+		server_file_path 	= join_path( server_directory, self.file_name, ftp_settings[ 'server_type' ] )
 		local_file_path		= os.path.join( local_directory, self.file_name )
 		ftp 				= FTP( ftp_settings[ 'host' ], ftp_settings[ 'username' ], ftp_settings[ 'password' ], ftp_settings[ 'timeout' ] )
 
@@ -429,6 +431,22 @@ class PageImportThread( threading.Thread ):
 #
 # Helper Functions
 #
+
+def join_path( dir_path, file_path, server_type ):
+	platform = sublime.platform()
+
+	if server_type == 'windows':
+		if dir_path.endswith( '\\' ):
+			return dir_path + file_path
+		else:
+			return dir_path + '\\' + file_path
+	elif platform == 'windows':
+		if dir_path.endswith( '/' ):
+			return dir_path + file_path
+		else:
+			return dir_path + '/' + file_path
+
+	return os.path.join( dir_path, file_path )
 
 def determine_settings( dir_name ):
 	settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
