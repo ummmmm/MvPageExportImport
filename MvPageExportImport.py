@@ -465,44 +465,44 @@ def determine_settings( dir_name ):
 	return None
 
 def make_json_request( store_settings, function, other_data = '' ):
-		store_settings.setdefault( 'store_code', '' )
-		store_settings.setdefault( 'json_url', '' )
-		store_settings.setdefault( 'username', '' )
-		store_settings.setdefault( 'password', '' )
-		store_settings.setdefault( 'timeout', 15 )
+	store_settings.setdefault( 'store_code', '' )
+	store_settings.setdefault( 'json_url', '' )
+	store_settings.setdefault( 'username', '' )
+	store_settings.setdefault( 'password', '' )
+	store_settings.setdefault( 'timeout', 15 )
 
-		store_code	= store_settings[ 'store_code' ]
-		json_url 	= store_settings[ 'json_url' ]
-		username	= store_settings[ 'username' ]
-		password	= store_settings[ 'password' ]
-		timeout		= store_settings[ 'timeout' ]
+	store_code	= store_settings[ 'store_code' ]
+	json_url 	= store_settings[ 'json_url' ]
+	username	= store_settings[ 'username' ]
+	password	= store_settings[ 'password' ]
+	timeout		= store_settings[ 'timeout' ]
 
-		if not json_url.endswith( '?' ):
-			json_url += '?'
+	if not json_url.endswith( '?' ):
+		json_url += '?'
 
-		url = json_url + 'Store_Code={store_code}&Function={function}&Session_Type=admin&Username={username}&Password={password}{other_data}' \
-			  . format( store_code = store_code,  function = function, username = username, password = password, other_data = other_data )
+	url = json_url + 'Store_Code={store_code}&Function={function}&Session_Type=admin&Username={username}&Password={password}{other_data}' \
+		  . format( store_code = store_code,  function = function, username = username, password = password, other_data = other_data )
 
-		try:
-			request = urllib.request.urlopen( url, timeout = timeout )
-		except Exception as e:
-			print( 'Failed opening URL: {0}' . format( str( e ) ) )
-			return False, None, 'Failed to open URL'
+	try:
+		request = urllib.request.urlopen( url, timeout = timeout )
+	except Exception as e:
+		print( 'Failed opening URL: {0}' . format( str( e ) ) )
+		return False, None, 'Failed to open URL'
 
-		try:
-			content = request.read().decode()
-		except Exception as e:
-			print( 'Failed decoding response: {0}' . format( str( e ) ) )
-			return False, None, 'Failed to decode response'
+	try:
+		content = request.read().decode()
+	except Exception as e:
+		print( 'Failed decoding response: {0}' . format( str( e ) ) )
+		return False, None, 'Failed to decode response'
 
-		try:
-			json_response 	= json.loads( content )
-		except Exception as e:
-			print( 'Failed to parse JSON: {0}' . format( str( e ) ) )
-			return False, None, 'Failed to parse JSON response'
+	try:
+		json_response = json.loads( content )
+	except Exception as e:
+		print( 'Failed to parse JSON: {0}' . format( str( e ) ) )
+		return False, None, 'Failed to parse JSON response'
 
-		if 'success' not in json_response or json_response[ 'success' ] != 1:
-			print( 'JSON response was not a success {0}' . format( json_response ) )
-			return False, None, json_response[ 'error_message' ]
+	if 'success' not in json_response or json_response[ 'success' ] != 1:
+		print( 'JSON response was not a success {0}' . format( json_response ) )
+		return False, None, json_response[ 'error_message' ]
 
-		return True, json_response, None
+	return True, json_response, None
