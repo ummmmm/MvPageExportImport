@@ -1,6 +1,14 @@
 [
 	{
+		"caption": "MvPageExportImport: List Sites",
+		"command": "mv_page_export_import_get_sites"
+	},
+	{
 		"caption": "MvPageExportImport: List Store Pages",
-		"command": "mv_page_export_import_get_page"
+		"command": "mv_page_export_import_get_pages"
+	},
+	{
+		"caption": "MvPageExportImport: List Page Items",
+		"command": "mv_page_export_import_get_items"
 	}
 ]

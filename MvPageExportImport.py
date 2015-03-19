@@ -1,9 +1,11 @@
 import sublime, sublime_plugin
+
+import re
 import json
 import os.path
-import urllib.request
-import re
 import threading
+import urllib.request
+
 from .FTP import FTP
 
 #
@@ -15,14 +17,17 @@ class MvPageExportImportGetSitesCommand( sublime_plugin.WindowCommand ):
 		self.settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
 		sites			= []
 
-		for site in self.settings.get( 'sites', [] ):
-			sites.append( site[ 'name' ] )
+		try:
+			for site in self.settings.get( 'sites', [] ):
+				sites.append( site[ 'name' ] )
+		except TypeError:
+			pass
 
 		if not sites:
 			sublime.error_message( 'No sites configured' )
 			return
 
-		sublime.set_timeout( lambda: self.window.show_quick_panel( sites, lambda index: self.site_callback( sites, index ) ) )
+		sublime.set_timeout( lambda: self.window.show_quick_panel( sites, lambda index: self.site_callback( sites, index ) ), 10 )
 
 	def site_callback( self, sites, index ):
 		if index == -1:
@@ -41,16 +46,9 @@ class MvPageExportImportGetPagesCommand( sublime_plugin.WindowCommand ):
 			self.settings = settings
 		else:
 			try:
-				for site_settings in settings.get( 'sites', [] ):
-					if site_settings[ 'name' ] == site:
-						self.settings = site_settings
-						break
-			except KeyError:
-				sublime.error_message( 'Site not found' )
-				return
-			except Exception:
-				sublime.error_message( 'Invalid configuration file' )
-				return
+				self.settings = site_settings( site )
+			except:
+				return sublime.error_message( 'Invalid configuration file' )
 
 		thread = PageListLoadThread( self.settings, on_complete = self.pages_quick_panel )
 		thread.start()
@@ -80,23 +78,23 @@ class MvPageExportImportGetPagesCommand( sublime_plugin.WindowCommand ):
 		ThreadProgress( thread, 'Downloading {0}' . format( page_code ), '{0} downloaded' . format( page_code ), 'Download of {0} failed' . format( page_code ) )
 
 	def download_page_callback( self, local_file_path ):
-		self.window.open_file( local_file_path )
+		view = self.window.open_file( local_file_path )
+		view.settings().set( 'MvPageExportImport_Page', True )
+		view.settings().set( 'MvPageExportImport_Site', self.settings[ 'name' ] )
 
 	def show_quick_panel( self, entries, on_select, on_highlight = None ):
 		sublime.set_timeout( lambda: self.window.show_quick_panel( entries, on_select, on_highlight = on_highlight ), 10 )
 
 class MvPageExportImportGetItemsCommand( sublime_plugin.WindowCommand ):
 	def run( self ):
-		view 		= self.window.active_view()
-		file_path 	= view.file_name()
+		view = self.window.active_view()
 
-		if file_path is None or not file_path.endswith( '.htm' ):
+		if not view.settings().has( 'MvPageExportImport_Page' ) and not view.settings().has( 'MvPageExportImport_Item' ):
 			return
 
-		dir_name 		= os.path.dirname( file_path )
-		self.settings	= determine_settings( dir_name )
-
-		if self.settings is None:
+		try:
+			self.settings = site_settings( view.settings().get( 'MvPageExportImport_Site' ) )
+		except:
 			return
 
 		item_paths	= []
@@ -118,7 +116,9 @@ class MvPageExportImportGetItemsCommand( sublime_plugin.WindowCommand ):
 		ThreadProgress( thread, 'Downloading {0}' . format( file_name ), '{0} downloaded' . format( file_name ), 'Download of {0} failed' . format( 'file_name' ) )
 
 	def download_item_callback( self, local_file_path ):
-		self.window.open_file( local_file_path )
+		view = self.window.open_file( local_file_path )
+		view.settings().set( 'MvPageExportImport_Item', True )
+		view.settings().set( 'MvPageExportImport_Site', self.settings[ 'name' ] )
 
 	def show_quick_panel( self, entries, on_select, on_highlight = None ):
 		unique = []
@@ -135,24 +135,23 @@ class MvPageExportImportGetItemsCommand( sublime_plugin.WindowCommand ):
 
 class MvPageExportImportSavePage( sublime_plugin.EventListener ):
 	def on_post_save( self, view ):
-		file_path = view.file_name()
+		self.view = view
 
-		if file_path is None or not file_path.endswith( '.htm' ):
+		if not view.settings().has( 'MvPageExportImport_Item' ) and not view.settings().has( 'MvPageExportImport_Page' ):
 			return
 
-		dir_name 		= os.path.dirname( file_path )
-		self.settings	= determine_settings( dir_name )
-
-		if self.settings is None:
+		try:
+			self.settings = site_settings( view.settings().get( 'MvPageExportImport_Site' ) )
+		except:
 			return
 
-		file_name		= os.path.basename( file_path )
+		file_name		= os.path.basename( view.file_name() )
 		thread 			= FileUploadThread( file_name, self.settings, on_complete = self.upload_file_callback )
 		thread.start()
 		ThreadProgress( thread, 'Uploading {0}' . format( file_name ), '{0} uploaded' . format( file_name ), 'Upload of {0} failed' . format( file_name ) )
 
 	def upload_file_callback( self, file_name ):
-		if not file_name.endswith( '-page.htm' ):
+		if not self.view.settings().has( 'MvPageExportImport_Page' ):
 			return
 
 		page_code 	= file_name.replace( '-page.htm', '' )
@@ -170,30 +169,14 @@ class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 		self.item_regex = '<mvt:item name="[^"].+?"\s*(param="[^"].*?")?\s*file="[^"].+?\.htm"\s*\/>'
 
 	def on_load( self, view ):
-		file_path	= view.file_name()
-
-		if file_path is None or not file_path.endswith( '.htm' ):
-			return
-
-		dir_name = os.path.dirname( file_path )
-		settings = determine_settings( dir_name )
-
-		if settings is None:
+		if not view.settings().has( 'MvPageExportImport_Item' ) and not view.settings().has( 'MvPageExportImport_Page' ):
 			return
 
 		items = view.find_all( self.item_regex )
 		self.do_underline( view, items )
 
 	def on_modified( self, view ):
-		file_path	= view.file_name()
-
-		if file_path is None:
-			return
-
-		dir_name = os.path.dirname( file_path )
-		settings = determine_settings( dir_name )
-
-		if settings is None:
+		if not view.settings().has( 'MvPageExportImport_Item' ) and not view.settings().has( 'MvPageExportImport_Page' ):
 			return
 
 		items 		= view.find_all( self.item_regex )
@@ -226,9 +209,9 @@ class MvPageExportImportOpenPage( sublime_plugin.EventListener ):
 
 class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 	def run( self, edit ):
-		file_path 		= self.view.file_name()
+		view = self.view
 
-		if file_path is None or not file_path.endswith( '.htm' ):
+		if not view.settings().has( 'MvPageExportImport_Item' ) and not view.settings().has( 'MvPageExportImport_Page' ):
 			return
 
 		item_file_attr	= self.view.substr( self.view.expand_by_class( self.view.sel()[ 0 ], sublime.CLASS_WORD_START | sublime.CLASS_WORD_END, '"' ) )
@@ -236,19 +219,20 @@ class MvPageExportImportOpenItemCommand( sublime_plugin.TextCommand ):
 		if not item_file_attr.endswith( '.htm' ):
 			return
 
-		dir_name = os.path.dirname( file_path )
-		settings = determine_settings( dir_name )
-
-		if settings is None:
+		try:
+			self.settings = site_settings( view.settings().get( 'MvPageExportImport_Site' ) )
+		except:
 			return
 
 		file_name 	= item_file_attr
-		thread 		= FileDownloadThread( file_name, settings, on_complete = self.download_item_callback )
+		thread 		= FileDownloadThread( file_name, self.settings, on_complete = self.download_item_callback )
 		thread.start()
 		ThreadProgress( thread, 'Downloading {0}' . format( file_name ), '{0} downloaded' . format( file_name ), 'Download of {0} failed' . format( file_name ) )
 
 	def download_item_callback( self, local_file_path ):
-		self.view.window().open_file( local_file_path )
+		view = self.view.window().open_file( local_file_path )
+		view.settings().set( 'MvPageExportImport_Item', True )
+		view.settings().set( 'MvPageExportImport_Site', self.settings[ 'name' ] )
 
 #
 # Thread Functionality
@@ -448,7 +432,7 @@ def join_path( dir_path, file_path, server_type ):
 
 	return os.path.join( dir_path, file_path )
 
-def determine_settings( dir_name ):
+def site_settings( name ):
 	settings 	= sublime.load_settings( 'MvPageExportImport.sublime-settings' )
 	sites		= settings.get( 'sites' )
 
@@ -457,12 +441,12 @@ def determine_settings( dir_name ):
 
 	try:
 		for site in sites:
-			if site[ 'local_exported_templates' ] == dir_name:
+			if site[ 'name' ] == name:
 				return site
 	except:
 		pass
 
-	return None
+	raise ValueError
 
 def make_json_request( store_settings, function, other_data = '' ):
 	store_settings.setdefault( 'store_code', '' )
